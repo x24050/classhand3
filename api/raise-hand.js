@@ -14,44 +14,38 @@ export default async function handler(req, res) {
 
   // 環境変数チェック
   const webhookUrl = process.env.WEBP_WEBHOOK;
+  const baseURL = process.env.BASE_URL;
   if (!webhookUrl) {
-    console.error("WEBHOOK_URL is missing!");
-    return res.status(500).send("Server configuration error");
+    console.error("WEBP_WEBHOOKが設定されていません！");
+    return res.status(500).send("サーバー設定エラー: WEBHOOK未設定");
+  }
+  if (!baseURL) {
+    console.error("BASE_URL環境変数が設定されていません。");
+    return res.status(500).send("サーバー設定エラー: BASE_URLが未設定です。");
   }
 
-  // 生徒ごとの座席表リンク
-  const seatMapUrl = `https://example.com/seating-chart?studentId=${encodeURIComponent(studentId)}`;
+  // 質問内容をURLエンコード
+  const encodedQuestion = encodeURIComponent(question);
+  const seatmapLink = `${baseURL}/seatmap.html?studentId=${encodeURIComponent(studentId)}&question=${encodedQuestion}`;
 
-  // Teams Adaptive Card 形式で送信
-  const payload = {
-    type: "message",
-    attachments: [
+  // Teams MessageCard形式で送信
+  const message = {
+    "@type": "MessageCard",
+    "@context": "https://schema.org/extensions",
+    "summary": "新しい挙手",
+    "themeColor": "DC143C", // 赤系統でハイライト
+    "title": `🔴 挙手通知: ${studentId}`,
+    "text": `**学籍番号:** ${studentId}\n**質問:** ${question}`,
+    "potentialAction": [
       {
-        contentType: "application/vnd.microsoft.card.adaptive",
-        content: {
-          type: "AdaptiveCard",
-          version: "1.4",
-          body: [
-            {
-              type: "TextBlock",
-              text: `🙋‍♀️ 学籍番号: ${studentId}`,
-              weight: "Bolder",
-              size: "Medium"
-            },
-            {
-              type: "TextBlock",
-              text: `質問: ${question}`,
-              wrap: true
-            }
-          ],
-          actions: [
-            {
-              type: "Action.OpenUrl",
-              title: "座席表を見る",
-              url: seatMapUrl
-            }
-          ]
-        }
+        "@type": "OpenUri",
+        "name": "座席表で確認する",
+        "targets": [
+          {
+            "os": "default",
+            "uri": seatmapLink
+          }
+        ]
       }
     ]
   };
@@ -60,7 +54,7 @@ export default async function handler(req, res) {
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(message),
     });
 
     if (!response.ok) {
