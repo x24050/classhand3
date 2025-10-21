@@ -21,28 +21,13 @@ export default async function handler(req, res) {
 
   // Teamsに送信
   try {
-    const message = {
-    "@type": "MessageCard",
-    "@context": "https://schema.org/extensions",
-    "summary": "新しい挙手",
-    "themeColor": "DC143C", // ハイライトに合わせて赤系統に変更
-    "title": `🔴 挙手通知: ${studentId}`,
-    "text": `**学籍番号:** ${studentId}\n**質問:** ${question}`,
-    "potentialAction": [ // リンクをボタンとして追加
-      {
-        "@type": "OpenUri",
-        "name": "座席表で確認する",
-        "targets": [
-          {
-            "os": "default",
-            "uri": seatmapLink // 生成したリンクを埋め込む
-          }
-        ]
-      }
-    ]
-  };
-  }
-    
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: `🙋‍♀️ 学籍番号: ${studentId}, 質問: ${question}`
+      }),
+    });
 
     if (!response.ok) {
       const text = await response.text();
