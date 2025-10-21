@@ -1,54 +1,70 @@
-// public/seatmap.js
+document.addEventListener('DOMContentLoaded', () => {
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const seats = document.querySelectorAll('.seat');
-  const modal = document.getElementById('questionModal');
-  const modalStudentId = document.getElementById('modal-student-id');
-  const modalQuestion = document.getElementById('modal-question-text');
+  async function loadActiveHands() {
+    try {
+      const res = await fetch('/api/raise-hand');
+      const activeHands = await res.json();
 
-  // 挙手データを取得
-  let handData = {};
-  try {
-    const res = await fetch('/api/hand-data');
-    handData = await res.json();
-  } catch (err) {
-    console.error("hand-data取得失敗:", err);
+      activeHands.forEach(h => {
+        const seat = document.querySelector(`.seat[data-studentid="${h.studentId}"]`);
+        if (seat) highlightSeat(seat, h.studentId, h.question);
+      });
+    } catch (err) {
+      console.error("挙手データ取得エラー:", err);
+    }
   }
 
-  // 座席ごとに反映
-  seats.forEach(seat => {
-    const sid = seat.dataset.studentid;
-    if (handData[sid] && !handData[sid].resolved) {
-      seat.classList.add('highlighted');
-      seat.innerHTML = `${seat.textContent}<div class="seat-label">🚨 挙手中</div>`;
-    }
+  function highlightSeat(seatElement, studentId, question) {
+    seatElement.classList.add('highlighted');
+    const existingContent = seatElement.textContent.trim();
+    seatElement.innerHTML = `${existingContent}<div class="seat-label">🚨 挙手中</div>`;
 
-    // クリックで質問表示＋対応済みボタン
-    seat.addEventListener('click', () => {
-      if (!handData[sid]) return;
-      modalStudentId.textContent = sid;
-      modalQuestion.textContent = handData[sid].question;
+    seatElement.addEventListener('click', () => {
+      const modal = document.getElementById('questionModal');
+      document.getElementById('modal-student-id').textContent = studentId;
+      document.getElementById('modal-question-text').textContent = question;
 
-      // 「対応済み」ボタンを追加
-      if (!document.getElementById('resolveButton')) {
-        const btn = document.createElement('button');
-        btn.id = 'resolveButton';
+      // 対応済みボタンを作成
+      let btn = document.getElementById('resolve-button');
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'resolve-button';
         btn.textContent = '対応済み';
-        btn.style.marginTop = '10px';
-        btn.onclick = () => {
-          handData[sid].resolved = true;
-          seat.classList.remove('highlighted');
-          seat.querySelector('.seat-label')?.remove();
-          modal.style.display = 'none';
-        };
-        modal.querySelector('.modal-content').appendChild(btn);
+        btn.style.marginTop = '15px';
+        btn.style.padding = '8px 12px';
+        btn.style.backgroundColor = '#1a73e8';
+        btn.style.color = 'white';
+        btn.style.border = 'none';
+        btn.style.borderRadius = '4px';
+        btn.style.cursor = 'pointer';
+        document.querySelector('.modal-content').appendChild(btn);
       }
+
+      btn.onclick = async () => {
+        try {
+          await fetch('/api/raise-hand', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentId })
+          });
+          seatElement.classList.remove('highlighted');
+          seatElement.querySelector('.seat-label')?.remove();
+          modal.style.display = 'none';
+        } catch (err) {
+          console.error("対応済みエラー:", err);
+        }
+      };
+
       modal.style.display = 'flex';
     });
+
+    seatElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // モーダルを閉じる処理
+  document.getElementById('questionModal').addEventListener('click', (e) => {
+    if (e.target.id === 'questionModal') e.target.style.display = 'none';
   });
 
-  // モーダル閉じる処理
-  modal.addEventListener('click', e => {
-    if (e.target.id === 'questionModal') modal.style.display = 'none';
-  });
+  loadActiveHands();
 });
