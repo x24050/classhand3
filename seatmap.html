@@ -9,9 +9,9 @@
     
     /* ★ 修正点: コンテナを中央に配置し、幅を座席表の最大幅に合わせる */
     .container {
-        max-width: 1200px; /* .seat-map-container の max-width と合わせる */
+        max-width: 1400px; /* .seat-map-container の max-width と合わせる */
         margin: 0 auto;    /* 中央寄せ */
-        padding: 20px;
+        padding: 10px;
         background-color: #f8f9fa; /* 背景色を設定してボックスの境界を分かりやすくする */
         border-radius: 10px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -23,7 +23,7 @@
       display: grid;
       grid-template-columns: repeat(12, 1fr); 
       gap: 10px; 
-      padding: 30px;
+      padding: 20px;
       background-color: #ffffff;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -35,7 +35,7 @@
     .seat {
       background-color: #e0e0e0;
       color: #333;
-      padding: 15px 5px; /* パディングを調整 */
+      padding: 7px 10px; /* パディングを調整 */
       border-radius: 6px;
       text-align: center;
       font-weight: 700;
@@ -43,7 +43,7 @@
       transition: background-color 0.3s, transform 0.1s;
       border: 2px solid #ccc;
       position: relative;
-      font-size: 0.9rem;
+      font-size: 0.7rem;
     }
     /* ★ 新規: 空席のスタイル */
     .empty-seat {
@@ -90,11 +90,11 @@
       grid-column: 1 / -1; /* 全幅を使用 */
       background-color: #1a73e8;
       color: white;
-      padding: 15px;
+      padding: 10px;
       text-align: center;
       border-radius: 6px;
       font-weight: 700;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     
     /* ポップアップ/モーダルスタイル (既存) */
