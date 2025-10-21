@@ -1,63 +1,70 @@
-let activeHands = []; // サーバー起動中のみ有効（メモリ）
+// submit.hand.js
+let activeHands = {}; // 学籍番号をキーにして質問内容を保持
 
 export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).send("Method not allowed");
+  }
+
+  const { studentId, question } = req.body || {};
+  if (!studentId || !question) {
+    return res.status(400).json({ error: "Missing fields" });
+  }
+
+  // 環境変数チェック
   const webhookUrl = process.env.WEBP_WEBHOOK;
-  if (!webhookUrl) return res.status(500).send("Server configuration error");
+  if (!webhookUrl) {
+    console.error("WEBHOOK_URL is missing!");
+    return res.status(500).send("Server configuration error");
+  }
 
-  if (req.method === "POST") {
-    const { studentId, question } = req.body || {};
-    if (!studentId || !question) return res.status(400).json({ error: "Missing fields" });
+  // --- メモリ上に保存 & 上書き ---
+  activeHands[studentId] = question;
 
-    // メモリに保存（重複防止）
-    if (!activeHands.find(h => h.studentId === studentId)) {
-      activeHands.push({ studentId, question });
-    }
+  // 座席表に反映させるURL（固定）
+  const baseURL = process.env.BASE_URL;
+  if (!baseURL) {
+    console.error("BASE_URLが未設定です");
+    return res.status(500).send("サーバー設定エラー");
+  }
 
-    // Teams送信
-    const baseURL = process.env.BASE_URL || "https://classhand3.vercel.app";
-    const message = {
-      "@type": "MessageCard",
-      "@context": "https://schema.org/extensions",
-      "summary": "新しい挙手",
-      "themeColor": "DC143C",
-      "title": `🔴 挙手通知: ${studentId}`,
-      "text": `**学籍番号:** ${studentId}\n**質問:** ${question}`,
-      "potentialAction": [
-        {
-          "@type": "OpenUri",
-          "name": "座席表で確認する",
-          "targets": [{ "os": "default", "uri": `${baseURL}/seatmap.html` }]
-        }
-      ]
-    };
+  const seatmapLink = `${baseURL}/seatmap.html`;
 
-    try {
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(message)
-      });
-      if (!response.ok) {
-        const text = await response.text();
-        console.error("Teams webhook error:", text);
+  const message = {
+    "@type": "MessageCard",
+    "@context": "https://schema.org/extensions",
+    "summary": "新しい挙手",
+    "themeColor": "DC143C",
+    "title": `🔴 挙手通知: ${studentId}`,
+    "text": `**学籍番号:** ${studentId}\n**質問:** ${question}`,
+    "potentialAction": [
+      {
+        "@type": "OpenUri",
+        "name": "座席表で確認する",
+        "targets": [{ "os": "default", "uri": seatmapLink }]
       }
-    } catch (err) {
-      console.error("Teams webhook exception:", err);
+    ]
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(message),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Teams webhook error:", text);
+      return res.status(500).send("Teams webhook failed");
     }
 
-    return res.status(200).json({ message: "挙手保存済み", activeHands });
+    return res.status(200).json({ message: "挙手送信完了", activeHands });
+  } catch (err) {
+    console.error("Exception:", err);
+    return res.status(500).send("Server error");
   }
-
-  if (req.method === "GET") {
-    return res.status(200).json(activeHands);
-  }
-
-  if (req.method === "DELETE") {
-    const { studentId } = req.body || {};
-    if (!studentId) return res.status(400).json({ error: "Missing studentId" });
-    activeHands = activeHands.filter(h => h.studentId !== studentId);
-    return res.status(200).json({ message: "対応済みに設定しました", activeHands });
-  }
-
-  return res.status(405).send("Method not allowed");
 }
+
+// 他ファイルから挙手データを取得できるようにエクスポート
+export { activeHands };
