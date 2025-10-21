@@ -1,35 +1,33 @@
-// submit.hand.js
-let activeHands = {}; // 学籍番号をキーにして質問内容を保持
+// api/raise-hand.js
 
 export default async function handler(req, res) {
+  // メソッドチェック
   if (req.method !== "POST") {
     return res.status(405).send("Method not allowed");
   }
 
+  // ボディ取得
   const { studentId, question } = req.body || {};
   if (!studentId || !question) {
     return res.status(400).json({ error: "Missing fields" });
   }
 
-  // 環境変数チェック
+  // BASE_URL 環境変数（未設定の場合は暫定値）
+  const baseURL = process.env.BASE_URL || "https://classhand3.vercel.app";
+  if (!process.env.BASE_URL) {
+    console.warn("⚠ BASE_URL が未設定です。暫定値を使用します:", baseURL);
+  }
+
+  const seatmapLink = `${baseURL}/seatmap.html?studentId=${encodeURIComponent(studentId)}&question=${encodeURIComponent(question)}`;
+
+  // Webhook URL
   const webhookUrl = process.env.WEBP_WEBHOOK;
   if (!webhookUrl) {
-    console.error("WEBHOOK_URL is missing!");
+    console.error("WEBP_WEBHOOK が未設定です!");
     return res.status(500).send("Server configuration error");
   }
 
-  // --- メモリ上に保存 & 上書き ---
-  activeHands[studentId] = question;
-
-  // 座席表に反映させるURL（固定）
-  const baseURL = process.env.BASE_URL;
-  if (!baseURL) {
-    console.error("BASE_URLが未設定です");
-    return res.status(500).send("サーバー設定エラー");
-  }
-
-  const seatmapLink = `${baseURL}/seatmap.html`;
-
+  // Teams 送信メッセージ作成
   const message = {
     "@type": "MessageCard",
     "@context": "https://schema.org/extensions",
@@ -41,7 +39,9 @@ export default async function handler(req, res) {
       {
         "@type": "OpenUri",
         "name": "座席表で確認する",
-        "targets": [{ "os": "default", "uri": seatmapLink }]
+        "targets": [
+          { "os": "default", "uri": seatmapLink }
+        ]
       }
     ]
   };
@@ -59,12 +59,9 @@ export default async function handler(req, res) {
       return res.status(500).send("Teams webhook failed");
     }
 
-    return res.status(200).json({ message: "挙手送信完了", activeHands });
+    return res.status(200).json({ message: "Sent to Teams!", seatmapLink });
   } catch (err) {
     console.error("Exception:", err);
     return res.status(500).send("Server error");
   }
 }
-
-// 他ファイルから挙手データを取得できるようにエクスポート
-export { activeHands };
