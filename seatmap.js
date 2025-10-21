@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function highlightSeat(seatElement, studentId, question) {
     seatElement.classList.add('highlighted');
     const existingContent = seatElement.textContent.trim();
-    seatElement.innerHTML = `${existingContent}<div class="seat-label">🚨 挙手中</div>`;
+    seatElement.innerHTML = `${existingContent}<div class="seat-label"> </div>`;
 
     const handleClick = () => {
       const modal = document.getElementById('questionModal');
