@@ -8,9 +8,13 @@ export default async function handler(req, res) {
     const { studentId, question } = req.body || {};
     if (!studentId || !question) return res.status(400).json({ error: "Missing fields" });
 
-    // メモリに保存（重複防止）
-    if (!activeHands.find(h => h.studentId === studentId)) {
-      activeHands.push({ studentId, question });
+    // 同じ studentId があれば上書き、なければ追加
+    const existing = activeHands.find(h => h.studentId === studentId);
+    if (existing) {
+      existing.question = question;
+      existing.updatedAt = new Date();
+    } else {
+      activeHands.push({ studentId, question, createdAt: new Date() });
     }
 
     // Teams送信
