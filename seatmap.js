@@ -1,51 +1,58 @@
+// public/seatmap.js
 document.addEventListener('DOMContentLoaded', () => {
-  const modal = document.getElementById('questionModal');
-  const modalStudent = document.getElementById('modal-student-id');
-  const modalQuestion = document.getElementById('modal-question-text');
-  const resolveBtn = document.getElementById('resolveBtn');
+    const activeQuestions = []; // メモリ上で挙手情報を保持
 
-  // 座席ごとに挙手を反映する
-  async function fetchHands() {
-    const res = await fetch('/api/get-hands');
-    const hands = await res.json();
+    const urlParams = new URLSearchParams(window.location.search);
+    const studentIdFull = urlParams.get('studentId');
+    const question = urlParams.get('question');
 
-    document.querySelectorAll('.seat').forEach(seat => {
-      const studentId = seat.dataset.studentid;
-      const hand = hands.find(h => h.studentId === studentId && !h.resolved);
+    if (studentIdFull && question) {
+        addQuestion(studentIdFull, question);
+    }
 
-      if (hand) {
-        seat.classList.add('highlighted');
-        seat.innerHTML = `${studentId}<div class="seat-label">🚨 挙手中</div>`;
-        seat.onclick = () => showPopup(hand);
-      } else {
-        seat.classList.remove('highlighted');
-        seat.innerHTML = `${studentId}`;
-        seat.onclick = null;
-      }
+    function addQuestion(studentId, questionText) {
+        const seatElement = document.querySelector(`.seat[data-studentid="${studentId}"]`);
+        if (!seatElement) return console.log(`学籍番号 ${studentId} に対応する座席が見つかりません`);
+
+        if (!activeQuestions.find(q => q.studentId === studentId)) {
+            activeQuestions.push({ studentId, question: questionText });
+        }
+
+        highlightSeat(seatElement, studentId, questionText);
+    }
+
+    function highlightSeat(seatElement, studentId, questionText) {
+        seatElement.classList.add('highlighted');
+        const existingContent = seatElement.textContent.trim();
+        seatElement.innerHTML = `${existingContent}<div class="seat-label">🚨 挙手中</div>`;
+
+        seatElement.onclick = () => {
+            document.getElementById('modal-student-id').textContent = studentId;
+            document.getElementById('modal-question-text').textContent = questionText;
+            document.getElementById('questionModal').style.display = 'flex';
+        };
+
+        seatElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    const resolveButton = document.getElementById('resolveButton');
+    resolveButton.addEventListener('click', () => {
+        const modalStudentId = document.getElementById('modal-student-id').textContent;
+        const seat = document.querySelector(`.seat[data-studentid="${modalStudentId}"]`);
+        if (seat) {
+            seat.classList.remove('highlighted');
+            const text = seat.textContent.replace('🚨 挙手中', '');
+            seat.textContent = text;
+        }
+        // メモリから削除
+        const idx = activeQuestions.findIndex(q => q.studentId === modalStudentId);
+        if (idx !== -1) activeQuestions.splice(idx, 1);
+
+        document.getElementById('questionModal').style.display = 'none';
     });
-  }
 
-  function showPopup(hand) {
-    modalStudent.textContent = hand.studentId;
-    modalQuestion.textContent = hand.question;
-    modal.style.display = 'flex';
-
-    resolveBtn.onclick = async () => {
-      await fetch('/api/resolve-hand', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: hand.studentId })
-      });
-      modal.style.display = 'none';
-      fetchHands();
-    };
-  }
-
-  // 背景クリックで閉じる
-  modal.addEventListener('click', e => {
-    if (e.target.id === 'questionModal') modal.style.display = 'none';
-  });
-
-  fetchHands();
-  setInterval(fetchHands, 5000); // 5秒ごとに更新
+    // モーダルの背景クリックで閉じる
+    document.getElementById('questionModal').addEventListener('click', e => {
+        if (e.target.id === 'questionModal') e.target.style.display = 'none';
+    });
 });
