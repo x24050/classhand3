@@ -5,10 +5,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/raise-hand');
       const activeHands = await res.json();
 
+      // 全ての席を一旦初期化（前回のクリックイベントも解除）
+      document.querySelectorAll('.seat').forEach(seat => {
+        seat.classList.remove('highlighted');
+        seat.querySelector('.seat-label')?.remove();
+
+        // クリックイベントをリセット（旧リスナー削除）
+        const newSeat = seat.cloneNode(true);
+        seat.parentNode.replaceChild(newSeat, seat);
+      });
+
+      // 挙手中の席を再描画
       activeHands.forEach(h => {
         const seat = document.querySelector(`.seat[data-studentid="${h.studentId}"]`);
         if (seat) highlightSeat(seat, h.studentId, h.question);
       });
+
     } catch (err) {
       console.error("挙手データ取得エラー:", err);
     }
@@ -19,12 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const existingContent = seatElement.textContent.trim();
     seatElement.innerHTML = `${existingContent}<div class="seat-label">🚨 挙手中</div>`;
 
-    seatElement.addEventListener('click', () => {
+    const handleClick = () => {
       const modal = document.getElementById('questionModal');
       document.getElementById('modal-student-id').textContent = studentId;
       document.getElementById('modal-question-text').textContent = question;
 
-      // 対応済みボタンを作成
+      // 対応済みボタンを作成（重複防止）
       let btn = document.getElementById('resolve-button');
       if (!btn) {
         btn = document.createElement('button');
@@ -47,8 +59,14 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ studentId })
           });
+
+          // 見た目をリセット
           seatElement.classList.remove('highlighted');
           seatElement.querySelector('.seat-label')?.remove();
+
+          // クリックイベント削除（=非挙手状態）
+          seatElement.replaceWith(seatElement.cloneNode(true));
+
           modal.style.display = 'none';
         } catch (err) {
           console.error("対応済みエラー:", err);
@@ -56,7 +74,10 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       modal.style.display = 'flex';
-    });
+    };
+
+    // 新しいクリックイベントを登録
+    seatElement.addEventListener('click', handleClick);
 
     seatElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
