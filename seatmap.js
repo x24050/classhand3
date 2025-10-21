@@ -1,70 +1,61 @@
+import { activeHands } from "./submit.hand.js"; // Vercel上ではimport方法に注意
+
 document.addEventListener('DOMContentLoaded', () => {
+  const seats = document.querySelectorAll('.seat');
+  const modal = document.getElementById('questionModal');
+  const modalStudent = document.getElementById('modal-student-id');
+  const modalText = document.getElementById('modal-question-text');
 
-  async function loadActiveHands() {
-    try {
-      const res = await fetch('/api/raise-hand');
-      const activeHands = await res.json();
+  // モーダル内の「対応済み」ボタンを1つだけ作成
+  let resolveButton = document.createElement('button');
+  resolveButton.textContent = "対応済み";
+  resolveButton.style.marginTop = "15px";
+  resolveButton.style.padding = "5px 10px";
+  resolveButton.style.background = "#28a745";
+  resolveButton.style.color = "white";
+  resolveButton.style.border = "none";
+  resolveButton.style.borderRadius = "5px";
+  resolveButton.style.cursor = "pointer";
+  modal.querySelector('.modal-content').appendChild(resolveButton);
 
-      activeHands.forEach(h => {
-        const seat = document.querySelector(`.seat[data-studentid="${h.studentId}"]`);
-        if (seat) highlightSeat(seat, h.studentId, h.question);
-      });
-    } catch (err) {
-      console.error("挙手データ取得エラー:", err);
-    }
-  }
-
-  function highlightSeat(seatElement, studentId, question) {
-    seatElement.classList.add('highlighted');
-    const existingContent = seatElement.textContent.trim();
-    seatElement.innerHTML = `${existingContent}<div class="seat-label">🚨 挙手中</div>`;
-
-    seatElement.addEventListener('click', () => {
-      const modal = document.getElementById('questionModal');
-      document.getElementById('modal-student-id').textContent = studentId;
-      document.getElementById('modal-question-text').textContent = question;
-
-      // 対応済みボタンを作成
-      let btn = document.getElementById('resolve-button');
-      if (!btn) {
-        btn = document.createElement('button');
-        btn.id = 'resolve-button';
-        btn.textContent = '対応済み';
-        btn.style.marginTop = '15px';
-        btn.style.padding = '8px 12px';
-        btn.style.backgroundColor = '#1a73e8';
-        btn.style.color = 'white';
-        btn.style.border = 'none';
-        btn.style.borderRadius = '4px';
-        btn.style.cursor = 'pointer';
-        document.querySelector('.modal-content').appendChild(btn);
+  // 座席をチェックしてハイライト
+  function refreshSeats() {
+    seats.forEach(seat => {
+      const id = seat.dataset.studentid;
+      if (activeHands[id]) {
+        seat.classList.add('highlighted');
+        seat.innerHTML = `${id}<div class="seat-label">🚨 挙手中</div>`;
+      } else {
+        seat.classList.remove('highlighted');
+        seat.innerHTML = id;
       }
-
-      btn.onclick = async () => {
-        try {
-          await fetch('/api/raise-hand', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ studentId })
-          });
-          seatElement.classList.remove('highlighted');
-          seatElement.querySelector('.seat-label')?.remove();
-          modal.style.display = 'none';
-        } catch (err) {
-          console.error("対応済みエラー:", err);
-        }
-      };
-
-      modal.style.display = 'flex';
     });
-
-    seatElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
-  // モーダルを閉じる処理
-  document.getElementById('questionModal').addEventListener('click', (e) => {
-    if (e.target.id === 'questionModal') e.target.style.display = 'none';
+  // 座席クリックイベント
+  seats.forEach(seat => {
+    seat.addEventListener('click', () => {
+      const id = seat.dataset.studentid;
+      if (!activeHands[id]) return; // 挙手中でなければ無視
+
+      modalStudent.textContent = id;
+      modalText.textContent = activeHands[id];
+      modal.style.display = "flex";
+
+      // 「対応済み」ボタンの動作
+      resolveButton.onclick = () => {
+        delete activeHands[id]; // データ削除
+        refreshSeats();         // 座席の表示更新
+        modal.style.display = "none";
+      };
+    });
   });
 
-  loadActiveHands();
+  // モーダル閉じる
+  modal.addEventListener('click', e => {
+    if (e.target.id === 'questionModal') modal.style.display = 'none';
+  });
+
+  // 初回表示時に挙手中の席をハイライト
+  refreshSeats();
 });
