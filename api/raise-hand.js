@@ -1,43 +1,70 @@
-// api/raise-hand.js
+// handraise.js
 
-export default async function handler(req, res) {
-  // メソッドチェック
-  if (req.method !== "POST") {
-    return res.status(405).send("Method not allowed");
-  }
+// 挙手フォーム送信処理
+document.getElementById("raise-hand-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-  // ボディ取得
-  const { studentId, question } = req.body || {};
-  if (!studentId || !question) {
-    return res.status(400).json({ error: "Missing fields" });
-  }
+  const classId = document.getElementById("classId").value;
+  const studentId = document.getElementById("studentId").value;
+  const question = document.getElementById("question").value;
 
-  // 環境変数チェック
-  const webhookUrl = process.env.WEBP_WEBHOOK;
+  // Teams Webhook URL（授業ごとに環境変数を使う想定）
+  const webhookMap = {
+    webp: WEBP_WEBHOOK // ← envから埋め込む（例：Vercelの環境変数）
+  };
+  const webhookUrl = webhookMap[classId];
+
   if (!webhookUrl) {
-    console.error("WEBHOOK_URL is missing!");
-    return res.status(500).send("Server configuration error");
+    alert("無効な授業です");
+    return;
   }
 
-  // Teamsに送信
+  // BASE_URLも環境変数から取得
+  const baseURL = BASE_URL; // 例: https://your-vercel-app.vercel.app
+  if (!baseURL) {
+    console.error("BASE_URL環境変数が設定されていません。");
+    alert("システムエラー: BASE_URL未設定です。");
+    return;
+  }
+
+  // 座席表リンク生成
+  const encodedQuestion = encodeURIComponent(question);
+  const seatmapLink = `${baseURL}/seatmap.html?studentId=${studentId}&question=${encodedQuestion}`;
+
+  // Teamsメッセージ（MessageCard形式）
+  const message = {
+    "@type": "MessageCard",
+    "@context": "https://schema.org/extensions",
+    "summary": "新しい挙手",
+    "themeColor": "DC143C",
+    "title": `🔴 挙手通知: ${studentId}`,
+    "text": `**学籍番号:** ${studentId}\n**質問:** ${question}`,
+    "potentialAction": [
+      {
+        "@type": "OpenUri",
+        "name": "座席表で確認する",
+        "targets": [
+          { "os": "default", "uri": seatmapLink }
+        ]
+      }
+    ]
+  };
+
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: `🙋‍♀️ 学籍番号: ${studentId}, 質問: ${question}`
-      }),
+      body: JSON.stringify(message)
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Teams webhook error:", text);
-      return res.status(500).send("Teams webhook failed");
+    if (response.ok) {
+      alert("挙手が送信されました！");
+      document.getElementById("question").value = "";
+    } else {
+      alert("送信に失敗しました。");
     }
-
-    return res.status(200).json({ message: "Sent to Teams!" });
   } catch (err) {
-    console.error("Exception:", err);
-    return res.status(500).send("Server error");
+    console.error("Teams送信エラー:", err);
+    alert("エラーが発生しました。");
   }
-}
+});
