@@ -1,6 +1,5 @@
 // api/raise-hand.js
-const fetch = require('node-fetch');
-let handData = {}; // メモリ上で保持: studentId -> {question, resolved}
+let handData = {}; // メモリ上保持: studentId -> {question, resolved}
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).send("Method not allowed");
@@ -12,7 +11,7 @@ module.exports = async function handler(req, res) {
   handData[studentId] = { question, resolved: false };
 
   // Teams通知
-  const baseUrl = process.env.BASE_URL;
+  const baseUrl = https://classhand3.vercel.app/;
   const webhookUrl = process.env.WEBP_WEBHOOK;
   if (!baseUrl || !webhookUrl) return res.status(500).send("Server設定エラー");
 
@@ -24,13 +23,24 @@ module.exports = async function handler(req, res) {
     "title": `🔴 挙手通知: ${studentId}`,
     "text": `**学籍番号:** ${studentId}\n**質問:** ${question}`,
     "potentialAction": [
-      { "@type": "OpenUri", "name": "座席表で確認する", "targets": [{ "os": "default", "uri": `${baseUrl.replace(/\/$/, '')}/seatmap.html` }] }
+      {
+        "@type": "OpenUri",
+        "name": "座席表で確認する",
+        "targets": [{ "os": "default", "uri": `${baseUrl.replace(/\/$/, '')}/seatmap.html` }]
+      }
     ]
   };
 
   try {
-    const response = await fetch(webhookUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(message) });
+    // 標準 fetch を使用
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(message)
+    });
+
     if (!response.ok) return res.status(500).send("Teams webhook失敗");
+
     return res.status(200).json({ message: "挙手送信成功!", handData });
   } catch (err) {
     console.error(err);
@@ -38,5 +48,5 @@ module.exports = async function handler(req, res) {
   }
 };
 
-// メモリ取得用関数
+// メモリ取得用
 module.exports.getHandData = () => handData;
