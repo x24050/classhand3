@@ -1,73 +1,54 @@
 // public/seatmap.js
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const seatMap = document.getElementById('seatMap');
+  const seats = document.querySelectorAll('.seat');
+  const modal = document.getElementById('questionModal');
+  const modalStudentId = document.getElementById('modal-student-id');
+  const modalQuestion = document.getElementById('modal-question-text');
 
-    // --- 1. 挙手データを API から取得 ---
-    let handData = {};
-    try {
-        const response = await fetch('/api/hand-data');
-        if (response.ok) {
-            handData = await response.json(); // { studentId: question, ... }
-        } else {
-            console.error("hand-data API error:", await response.text());
-        }
-    } catch (err) {
-        console.error("Exception fetching hand data:", err);
+  // 挙手データを取得
+  let handData = {};
+  try {
+    const res = await fetch('/api/hand-data');
+    handData = await res.json();
+  } catch (err) {
+    console.error("hand-data取得失敗:", err);
+  }
+
+  // 座席ごとに反映
+  seats.forEach(seat => {
+    const sid = seat.dataset.studentid;
+    if (handData[sid] && !handData[sid].resolved) {
+      seat.classList.add('highlighted');
+      seat.innerHTML = `${seat.textContent}<div class="seat-label">🚨 挙手中</div>`;
     }
 
-    // --- 2. すべての座席を走査し、挙手があればハイライト ---
-    document.querySelectorAll('.seat[data-studentid]').forEach(seat => {
-        const studentId = seat.dataset.studentid;
-        const question = handData[studentId];
-        if (question) {
-            highlightSeat(seat, studentId, question);
-        }
+    // クリックで質問表示＋対応済みボタン
+    seat.addEventListener('click', () => {
+      if (!handData[sid]) return;
+      modalStudentId.textContent = sid;
+      modalQuestion.textContent = handData[sid].question;
+
+      // 「対応済み」ボタンを追加
+      if (!document.getElementById('resolveButton')) {
+        const btn = document.createElement('button');
+        btn.id = 'resolveButton';
+        btn.textContent = '対応済み';
+        btn.style.marginTop = '10px';
+        btn.onclick = () => {
+          handData[sid].resolved = true;
+          seat.classList.remove('highlighted');
+          seat.querySelector('.seat-label')?.remove();
+          modal.style.display = 'none';
+        };
+        modal.querySelector('.modal-content').appendChild(btn);
+      }
+      modal.style.display = 'flex';
     });
+  });
 
-    // --- 3. 座席のハイライト関数 ---
-    function highlightSeat(seatElement, studentId, questionText) {
-        seatElement.classList.add('highlighted');
-        seatElement.innerHTML = `${studentId}<div class="seat-label">🚨 挙手中</div>`;
-
-        seatElement.addEventListener('click', () => {
-            const modal = document.getElementById('questionModal');
-            document.getElementById('modal-student-id').textContent = studentId;
-            document.getElementById('modal-question-text').textContent = questionText;
-
-            // 「対応済み」ボタンを作成
-            let handledBtn = document.getElementById('handled-button');
-            if (!handledBtn) {
-                handledBtn = document.createElement('button');
-                handledBtn.id = 'handled-button';
-                handledBtn.textContent = '対応済み';
-                handledBtn.style.marginTop = '10px';
-                handledBtn.addEventListener('click', async () => {
-                    // 解除APIに送信
-                    try {
-                        const resp = await fetch('/api/hand-data', {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ studentId }),
-                        });
-                        if (resp.ok) {
-                            seatElement.classList.remove('highlighted');
-                            seatElement.innerHTML = studentId; // ラベル削除
-                            modal.style.display = 'none';
-                        }
-                    } catch (err) {
-                        console.error("Failed to clear hand:", err);
-                    }
-                });
-                document.querySelector('.modal-content').appendChild(handledBtn);
-            }
-
-            modal.style.display = 'flex';
-        });
-    }
-
-    // --- 4. モーダル背景クリックで閉じる ---
-    document.getElementById('questionModal').addEventListener('click', e => {
-        if (e.target.id === 'questionModal') e.target.style.display = 'none';
-    });
+  // モーダル閉じる処理
+  modal.addEventListener('click', e => {
+    if (e.target.id === 'questionModal') modal.style.display = 'none';
+  });
 });
