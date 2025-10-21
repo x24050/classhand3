@@ -19,14 +19,48 @@ export default async function handler(req, res) {
     return res.status(500).send("Server configuration error");
   }
 
-  // Teamsに送信
+  // 生徒ごとの座席表リンク
+  const seatMapUrl = `https://example.com/seating-chart?studentId=${encodeURIComponent(studentId)}`;
+
+  // Teams Adaptive Card 形式で送信
+  const payload = {
+    type: "message",
+    attachments: [
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: {
+          type: "AdaptiveCard",
+          version: "1.4",
+          body: [
+            {
+              type: "TextBlock",
+              text: `🙋‍♀️ 学籍番号: ${studentId}`,
+              weight: "Bolder",
+              size: "Medium"
+            },
+            {
+              type: "TextBlock",
+              text: `質問: ${question}`,
+              wrap: true
+            }
+          ],
+          actions: [
+            {
+              type: "Action.OpenUrl",
+              title: "座席表を見る",
+              url: seatMapUrl
+            }
+          ]
+        }
+      }
+    ]
+  };
+
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text: `🙋‍♀️ 学籍番号: ${studentId}, 質問: ${question}`
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
@@ -35,7 +69,7 @@ export default async function handler(req, res) {
       return res.status(500).send("Teams webhook failed");
     }
 
-    return res.status(200).json({ message: "Sent to Teams!" });
+    return res.status(200).json({ message: "Sent to Teams with seat link!" });
   } catch (err) {
     console.error("Exception:", err);
     return res.status(500).send("Server error");
