@@ -5,12 +5,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/raise-hand');
       const activeHands = await res.json();
 
-      // 全ての席を一旦初期化（前回のクリックイベントも解除）
+      // 全ての席を一旦初期化
       document.querySelectorAll('.seat').forEach(seat => {
         seat.classList.remove('highlighted');
         seat.querySelector('.seat-label')?.remove();
 
-        // クリックイベントをリセット（旧リスナー削除）
+        // イベントをリセット（古いリスナー削除）
         const newSeat = seat.cloneNode(true);
         seat.parentNode.replaceChild(newSeat, seat);
       });
@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('modal-student-id').textContent = studentId;
       document.getElementById('modal-question-text').textContent = question;
 
-      // 対応済みボタンを作成（重複防止）
+      // 対応済みボタン
       let btn = document.getElementById('resolve-button');
       if (!btn) {
         btn = document.createElement('button');
@@ -60,13 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({ studentId })
           });
 
-          // 見た目をリセット
-          seatElement.classList.remove('highlighted');
-          seatElement.querySelector('.seat-label')?.remove();
-
-          // クリックイベント削除（=非挙手状態）
-          seatElement.replaceWith(seatElement.cloneNode(true));
-
+          // すぐ見た目を更新
+          await loadActiveHands();
           modal.style.display = 'none';
         } catch (err) {
           console.error("対応済みエラー:", err);
@@ -76,10 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modal.style.display = 'flex';
     };
 
-    // 新しいクリックイベントを登録
     seatElement.addEventListener('click', handleClick);
-
-    seatElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   // モーダルを閉じる処理
@@ -87,5 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.id === 'questionModal') e.target.style.display = 'none';
   });
 
+  // 初回読み込み
   loadActiveHands();
+
+  // 🕒 5秒ごとに自動更新
+  setInterval(loadActiveHands, 5000);
 });
