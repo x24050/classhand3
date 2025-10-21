@@ -4,17 +4,23 @@
   <meta charset="UTF-8">
   <title>座席表 (挙手確認)</title>
   <link rel="stylesheet" href="./style.css"> 
-  <style>
+<style>
     /* ... 既存のスタイル ... */
     
     /* ★ 修正点: コンテナを中央に配置し、幅を座席表の最大幅に合わせる */
     .container {
-        max-width: 1200px; /* .seat-map-container の max-width と合わせる */
+        max-width: 1400px; /* .seat-map-container の max-width と合わせる */
         margin: 0 auto;    /* 中央寄せ */
-        padding: 20px;
+        padding: 10px;
         background-color: #f8f9fa; /* 背景色を設定してボックスの境界を分かりやすくする */
         border-radius: 10px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* ヘッダーマージン調整 (距離を縮めるために以前の要求で追加/修正された部分) */
+    header h3 {
+        margin-bottom: 5px; 
+        margin-top: 0; /* h3のデフォルト上マージンも削除 */
     }
 
     /* seatmap専用のスタイル */
@@ -23,7 +29,7 @@
       display: grid;
       grid-template-columns: repeat(12, 1fr); 
       gap: 10px; 
-      padding: 30px;
+      padding: 20px;
       background-color: #ffffff;
       border-radius: 8px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -35,7 +41,7 @@
     .seat {
       background-color: #e0e0e0;
       color: #333;
-      padding: 15px 5px; /* パディングを調整 */
+      padding: 7px 10px; /* パディングを調整 */
       border-radius: 6px;
       text-align: center;
       font-weight: 700;
@@ -43,7 +49,7 @@
       transition: background-color 0.3s, transform 0.1s;
       border: 2px solid #ccc;
       position: relative;
-      font-size: 0.9rem;
+      font-size: 0.7rem;
     }
     /* ★ 新規: 空席のスタイル */
     .empty-seat {
@@ -71,6 +77,16 @@
       animation: pulse 1s infinite alternate;
       box-shadow: 0 0 10px rgba(255, 77, 79, 0.8);
     }
+    /* ★ 新規: 挙手中の席に手のアイコンを表示 */
+    .seat.highlighted::after {
+      content: '✋'; /* 挙手アイコン */
+      position: absolute;
+      top: 50%;
+      right: 5px;
+      transform: translateY(-50%);
+      font-size: 1.2rem;
+    }
+    
     @keyframes pulse {
       from { transform: scale(1); }
       to { transform: scale(1.05); }
@@ -90,14 +106,57 @@
       grid-column: 1 / -1; /* 全幅を使用 */
       background-color: #1a73e8;
       color: white;
-      padding: 15px;
+      padding: 10px;
       text-align: center;
       border-radius: 6px;
       font-weight: 700;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     
-    /* ポップアップ/モーダルスタイル (既存) */
+    /* --- 質問リストコンテナのスタイル (新規) --- */
+    .question-list-container {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    .question-list-container h4 {
+        margin-top: 0;
+        color: #1a73e8;
+        border-bottom: 1px solid #e8f0fe;
+        padding-bottom: 8px;
+    }
+    #activeQuestionsList {
+        list-style: none;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .question-item {
+        background-color: #ffe0b2; /* オレンジ系の警告色 */
+        color: #333;
+        padding: 8px 15px;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.2s, transform 0.1s;
+        border: 1px solid #ffb74d;
+        flex-grow: 1;
+        min-width: 150px;
+        text-align: center;
+    }
+    .question-item:hover {
+        background-color: #ffb74d;
+        transform: translateY(-1px);
+    }
+    .no-questions {
+        color: #6c757d;
+        font-style: italic;
+    }
+    
+    /* ポップアップ/モーダルスタイルはそのまま残します */
     #questionModal {
         position: fixed;
         left: 0;
@@ -139,6 +198,7 @@
         border: none;
         background: none;
     }
+
   </style>
 </head>
 <body>
