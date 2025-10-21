@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
   handData[studentId] = { question, resolved: false };
 
   // Teams通知
-  const baseUrl = https://classhand3.vercel.app/;
+  const baseUrl = "https://classhand3.vercel.app/";
   const webhookUrl = process.env.WEBP_WEBHOOK;
   if (!baseUrl || !webhookUrl) return res.status(500).send("Server設定エラー");
 
